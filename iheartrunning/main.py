@@ -14,7 +14,6 @@ pygame.display.set_caption("I ♥ RUNNING")
 # Pause variable
 paused = False
 
-
 # --- FACTORY PATTERN FOR GAME OBJECTS ---
 class GameObjectFactory:
     @staticmethod
@@ -25,7 +24,6 @@ class GameObjectFactory:
             return Obstacle()
         elif object_type == "background":
             return Background()
-
 
 # --- PLAYER CLASS ---
 class Player:
@@ -58,7 +56,6 @@ class Player:
                 self.y = HEIGHT - GROUND_HEIGHT - self.img.get_height()
                 self.jumping = False
 
-
 # --- OBSTACLE CLASS ---
 class Obstacle:
     def __init__(self):
@@ -67,12 +64,13 @@ class Obstacle:
         self.x = WIDTH
         self.y = HEIGHT - GROUND_HEIGHT - self.img.get_height()
         self.speed = 10
+        self.passed = False
 
     def move(self):
         self.x -= self.speed
         if self.x < -self.img.get_width():
             self.x = WIDTH  # Reset position
-
+            self.passed = False
 
 # --- BACKGROUND CLASS ---
 class Background:
@@ -90,7 +88,6 @@ class Background:
         if abs(self.scroll) >= self.width:
             self.scroll = 0
 
-
 # Function to reset the game state
 def reset_game():
     global player, obstacle, score, running
@@ -98,7 +95,6 @@ def reset_game():
     obstacle = GameObjectFactory.create_object("obstacle")
     score = 0
     main_game_loop()
-
 
 # Main game loop function (to allow restarting)
 def main_game_loop():
@@ -130,6 +126,11 @@ def main_game_loop():
             obstacle.move()
             background.move()
 
+            # Increase score when player passes the obstacle
+            if not obstacle.passed and player.x > obstacle.x + obstacle.img.get_width():
+                score += 1
+                obstacle.passed = True
+
             # Collision Detection
             player_rect = pygame.Rect(player.x, player.y, player.img.get_width(), player.img.get_height())
             obstacle_rect = pygame.Rect(obstacle.x, obstacle.y, obstacle.img.get_width(), obstacle.img.get_height())
@@ -157,11 +158,10 @@ def main_game_loop():
 
         pygame.display.flip()
 
-    game_over_screen()
+    game_over_screen(score)
 
-
-# Game Over Screen with Working Restart Button
-def game_over_screen():
+# Game Over Screen with Score Display
+def game_over_screen(final_score):
     global running
     game_over = True
 
@@ -170,9 +170,11 @@ def game_over_screen():
         font = pygame.font.Font(None, 72)
         game_over_text = font.render("Game Over", True, (255, 253, 0))
         restart_text = font.render("Press R to Restart", True, (255, 0, 0))
+        score_text = pygame.font.Font(None, 48).render(f"Final Score: {final_score}", True, (255, 255, 255))
 
-        screen.blit(game_over_text, (WIDTH // 2 - 150, HEIGHT // 2 - 50))
-        screen.blit(restart_text, (WIDTH // 2 - 200, HEIGHT // 2 + 20))
+        screen.blit(game_over_text, (WIDTH // 2 - 150, HEIGHT // 2 - 100))
+        screen.blit(score_text, (WIDTH // 2 - 120, HEIGHT // 2 - 30))
+        screen.blit(restart_text, (WIDTH // 2 - 200, HEIGHT // 2 + 40))
 
         pygame.display.flip()
 
@@ -186,7 +188,6 @@ def game_over_screen():
                     return  # Restart the game
 
     pygame.quit()
-
 
 # Start the game
 main_game_loop()
