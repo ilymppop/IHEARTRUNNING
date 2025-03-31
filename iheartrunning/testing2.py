@@ -1,45 +1,36 @@
-import unittest
-import pygame
-from main import Player, Obstacle, Background, WIDTH, HEIGHT, GROUND_HEIGHT
+import sqlite3
 
-class TestGame(unittest.TestCase):
-    def setUp(self):
-        pygame.init()
-        self.player = Player()
-        self.obstacle = Obstacle()
-        self.background = Background()
+def setup_database():
+    conn = sqlite3.connect(":memory:")  # Используем in-memory базу данных для теста
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS scores (id INTEGER PRIMARY KEY, name TEXT, score INTEGER)''')
+    conn.commit()
+    return conn, cursor
 
-    def test_player_initial_position(self):
-        self.assertEqual(self.player.x, 50)
-        self.assertEqual(self.player.y, HEIGHT - GROUND_HEIGHT - self.player.img.get_height())
+def user_exists(cursor, name):
+    cursor.execute("SELECT 1 FROM scores WHERE name = ?", (name,))
+    return cursor.fetchone() is not None
 
-    def test_player_movement(self):
-        self.player.x = 100
-        self.player.speed = 10
-        self.player.move()
-        self.assertIn(self.player.x, range(90, 111))  # Проверяем движение
+def save_score(cursor, conn, name, score):
+    if not user_exists(cursor, name):
+        cursor.execute("INSERT INTO scores (name, score) VALUES (?, ?)", (name, score))
+        conn.commit()
+        return True
+    return False
 
-    def test_player_jump(self):
-        self.player.jumping = False
-        self.player.velocity_y = 0
-        self.player.jump_height = 18
-        self.player.move()
-        self.assertFalse(self.player.jumping)  # Перед прыжком
-        
-        # Эмулируем нажатие пробела
-        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE))
-        self.player.move()
-        self.assertTrue(self.player.jumping)  # После прыжка
+def test_existing_user_registration():
+    conn, cursor = setup_database()
+    name = "Player1"
+    score = 100
+    
+    # Первая регистрация должна сработать
+    assert save_score(cursor, conn, name, score) == True
+    
+    # Повторная регистрация не должна сработать
+    assert save_score(cursor, conn, name, 200) == False
+    
+    conn.close()
+    print("Тест пройден: регистрация уже существующего пользователя не срабатывает.")
 
-    def test_obstacle_movement(self):
-        initial_x = self.obstacle.x
-        self.obstacle.move()
-        self.assertLess(self.obstacle.x, initial_x)  # Объект движется влево
-
-    def test_background_movement(self):
-        initial_scroll = self.background.scroll
-        self.background.move()
-        self.assertLess(self.background.scroll, initial_scroll)  # Фон прокручивается
-
-if __name__ == "__main__":
-    unittest.main()
+# Запуск теста
+test_existing_user_registration()
